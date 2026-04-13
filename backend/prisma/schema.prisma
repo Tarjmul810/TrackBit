@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int         @id @default(autoincrement())
+  email     String      @unique
+  password  String
+  name      String?
+  avatar    String?
+  comments  Comment[]
+  member    Member[]
+  tasks     Task[]
+  workspace Workspace[]
+}
+
+model Workspace {
+  id       Int       @id @default(autoincrement())
+  name     String
+  userId   Int
+  member   Member[]
+  projects Project[]
+  user     User      @relation(fields: [userId], references: [id])
+}
+
+model Member {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  workspaceId Int
+  user        User      @relation(fields: [userId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  assigned    Task[]
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  workspaceId Int
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  tasks       Task[]
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  status      status
+  created_at  DateTime  @default(now())
+  due_date    DateTime?
+  priority    Priority
+  assigned_to Int
+  userId      Int
+  projectId   Int
+  comments    Comment[]
+  member      Member    @relation(fields: [assigned_to], references: [id])
+  project     Project   @relation(fields: [projectId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  content    String
+  taskId     Int
+  created_at DateTime @default(now())
+  userId     Int
+  task       Task     @relation(fields: [taskId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+enum status {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
