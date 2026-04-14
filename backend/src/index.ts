@@ -53,20 +53,26 @@ const server = fastify();
 await server.register(cors, {
   origin: "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE"],
-})
+});
 
-const io = new Server(server.server);
+const io = new Server(server.server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  },
+});
 
 server.ready().then(() => {
   io.on("connection", (socket: any) => {
     console.log("User connected", socket.id);
     socket.on("join:project", (projectId: number) => {
-      console.log("Joining project", projectId);
 
       socket.join(`project:${projectId}`);
 
-      io.emit("join:project", projectId);
+      console.log("Joined project", projectId);
 
+      io.emit("join:project", projectId);
     });
   });
 });
@@ -169,7 +175,6 @@ server.post("/signin", async (request, reply) => {
   }
 });
 
-
 //WORKSPACE ROUTES
 server.post(
   "/workspace",
@@ -215,7 +220,10 @@ server.get(
     try {
       const workspaces = await prisma.workspace.findMany({
         where: {
-          userId,
+          OR: [
+            { userId },
+            { member: { some: { userId } } },
+          ]
         },
         include: {
           _count: {
@@ -223,8 +231,8 @@ server.get(
               member: true,
               projects: true,
             },
-          }
-        }
+          },
+        },
       });
 
       return reply.status(200).send({
@@ -333,8 +341,8 @@ server.get(
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
       });
 
@@ -351,7 +359,6 @@ server.get(
     }
   },
 );
-
 
 //PROJECT ROUTES
 server.post(
@@ -467,7 +474,6 @@ server.delete(
   },
 );
 
-
 //TASK ROUTES
 server.post(
   "/task/:id",
@@ -498,7 +504,6 @@ server.post(
         },
       });
 
-
       return reply.status(200).send({
         success: true,
         message: "Task created successfully",
@@ -509,7 +514,7 @@ server.post(
       return reply.status(500).send({
         success: false,
         message: "Unable to create task",
-        error
+        error,
       });
     }
   },
@@ -578,7 +583,7 @@ server.put(
         data,
       });
 
-      // io.to(`project:${projectId}`).emit('update', updatedTask)
+      io.to(`project:${projectId}`).emit("update", updatedTask);
 
       return reply.status(200).send({
         success: true,
@@ -586,7 +591,7 @@ server.put(
         updatedTask,
       });
     } catch (error) {
-      console.log(error)
+      console.log(error);
       return reply.status(500).send({
         success: false,
         message: "Unable to update task",
@@ -623,7 +628,6 @@ server.delete(
     }
   },
 );
-
 
 //COMMENT ROUTES
 server.post(
@@ -670,6 +674,13 @@ server.get(
         where: {
           taskId,
         },
+        include: {
+          user: {
+            select: {
+              name: true,
+            }
+          }
+        }
       });
 
       return reply.status(200).send({

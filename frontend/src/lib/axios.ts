@@ -61,13 +61,21 @@ export const getTasks = async (id: string) => {
 
 export const addTask = async (id: string, title: string, status: string, priority: string, assigned_to: number, description?: string) => {
     const response = await api.post(`/task/${id}`, { title, description, status, priority, assigned_to })
-    console.log(response.data)
     return response
 }
 
 export const updateTask = async (id: string, status: string, title?: string, description?: string, priority?: string, assigned_to?: number) => {
-    console.log(title, description, status, priority, assigned_to)
     const response = await api.put(`/task/${id}`, { title, description, status, priority, assigned_to })
-    console.log(response.data)
     return response
+}
+
+export const sendComment = async (id: string, comment: string) => {
+    const response = await api.post(`/comment/${id}`, { content: comment })
+    return response
+}
+
+export const getComments = async (id: string) => {
+    const response = await api.get(`/comment/${id}`)
+    console.log(response)
+    return response.data
 }

@@ -48,6 +48,12 @@ export default function Workspaces() {
         router.push("/dashboard")
     }
 
+    const Logout = () => {
+        localStorage.removeItem("token")
+        localStorage.removeItem("email")
+        router.push("/signin")
+    }
+
     const handleAddProject = async () => {
         await addProject(name, id)
         setName("")
@@ -93,7 +99,7 @@ export default function Workspaces() {
                     <div className="flex gap-4">
                         <button className="w-24 h-9 text-white bg-[#9865f0] hover:bg-[#a281f5] px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm" onClick={handleProjectOpen}>New</button>
                         <button className="w-24 h-9 text-white bg-[#9865f0] hover:bg-[#a281f5] px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm" onClick={handleMemberOpen}>Invite</button>
-                        <button className="w-24 h-9 text-white bg-[#585067] hover:bg-[#72688c] px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm">Logout</button>
+                        <button className="w-24 h-9 text-white bg-[#585067] hover:bg-[#72688c] px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm" onClick={Logout}>Logout</button>
                     </div>
                 </div>
 
