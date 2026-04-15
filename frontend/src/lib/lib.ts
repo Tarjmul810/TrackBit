@@ -32,7 +32,7 @@ export interface Member {
 }
 
 export interface Task {
-  id: string;
+  id: string | number;
   title: string;
   description?: string;
   status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
@@ -50,7 +50,7 @@ export interface SelectedTask {
 }
 
 export interface Comment {
-  id: number;
+  id: number | string;
   content: string;
   taskId: string;
   created_at: string;
@@ -58,4 +58,19 @@ export interface Comment {
   user: {
     name: string;
   }
+}
+
+export interface CommentStore  {
+  commentsByCard: Record<string, Comment[]>
+
+  setComments: (cardId: string, comments: Comment[]) => void
+  addComment: (cardId: string, text: string, userName: string) => Promise<void>
+} 
+
+export type TasksByStatus =  Record<string, Task[]>
+
+export interface TaskStore {
+  tasksByStatus: TasksByStatus
+  setTasks: (tasks: Task[]) => void
+  moveTask: (taskId: string, newStatus: string) => Promise<void>
 }

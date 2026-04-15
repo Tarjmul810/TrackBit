@@ -13,10 +13,11 @@ export default function Signin() {
 
     const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault()
-        const response: Request = await login(email, password)
+        const response = await login(email, password)
         console.log(response)
-        localStorage.setItem("token", response.token)
+        localStorage.setItem("token", response.data.token)
         localStorage.setItem("email", email)
+        localStorage.setItem("name", response.data.user.name)
 
         router.push("/dashboard")
     }

@@ -165,7 +165,9 @@ server.post("/signin", async (request, reply) => {
     return reply.status(200).send({
       success: true,
       message: "User logged in successfully",
-      token,
+      data: {
+        token, user
+      }
     });
   } catch (error) {
     return reply.status(500).send({

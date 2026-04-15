@@ -4,12 +4,12 @@ import Input from "@/src/components/Input";
 import Sidebar from "@/src/components/Sidebar";
 import { TaskColumnCard } from "@/src/components/TaskColumnCard";
 import { addTask, getComments, getMembers, getTasks, getWorkspaces, sendComment, updateTask } from "@/src/lib/axios";
-import { Comment, Member, Task, Workspace } from "@/src/lib/lib";
+import { Member, Task, Workspace } from "@/src/lib/lib";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { socket } from "@/src/lib/socket";
-
+import {useCommentStore, useTaskStore} from "@/src/lib/store";
 
 export default function Projects() {
 
@@ -18,6 +18,9 @@ export default function Projects() {
     const workspaceId = searchParams.get("workspace")
     const projectId = params.id as string
     const router = useRouter()
+    const userName = localStorage.getItem("name") as string
+    const { addComment, commentsByCard, setComments } = useCommentStore()
+    const { tasksByStatus, setTasks, moveTask } = useTaskStore()
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState("")
     const [status, setStatus] = useState("TODO")
@@ -26,11 +29,14 @@ export default function Projects() {
     const [isOpen, setIsOpen] = useState(false)
     const [isTaskOpen, setIsTaskOpen] = useState(false)
     const [workspace, setWorkspace] = useState<Workspace[]>([])
-    const [tasks, setTasks] = useState<Task[]>([])
+    // const [tasks, setTasks] = useState<Task[]>([])
     const [members, setMembers] = useState<Member[]>([])
     const [selectedTask, setSelectedTask] = useState<Task | null>(null)
     const [comment, setComment] = useState<string>("")
-    const [comments, setComments] = useState<Comment[]>([])
+    const comments = commentsByCard[selectedTask?.id as string] || []
+    const tasks = Object.values(tasksByStatus).flat()
+
+
 
     const getWorkspace = async () => {
         const response = await getWorkspaces()
@@ -58,6 +64,7 @@ export default function Projects() {
 
     const handleGetTasks = async (id: string) => {
         const response = await getTasks(id)
+        console.log(response)
         setTasks(response.tasks)
     }
 
@@ -72,43 +79,37 @@ export default function Projects() {
     }
 
     const handleIsOpen = () => {
+    
         setIsOpen(!isOpen)
     }
-
-    const handleCommentOpen = async () => {
-
-        if(!isTaskOpen) {
-            await handleGetComments()
-        }
-        setIsTaskOpen(!isTaskOpen)
-
-    }
-
-    const handleUpdateTask = async (taskId: string, status: string) => {
-        await updateTask(taskId, status)
-    }
-
+    
     const handleDragEnd = async (result: DropResult) => {
         if (!result.destination) return
-
+        
         const taskId = result.draggableId
         const newStatus = result.destination.droppableId
 
-        await handleUpdateTask(taskId, newStatus)
-        await handleGetTasks(projectId)
+        console.log(taskId, newStatus)
+        
+        moveTask(taskId, newStatus)
+    }
+    
+    const handleCommentOpen = async () => {
+        if (!isTaskOpen) {
+            handleGetComments()
+        }
+        setIsTaskOpen(!isTaskOpen)
     }
 
     const handleSendComment = async () => {
-        await sendComment(selectedTask?.id as string, comment)
-        await handleGetComments()
-
+        const sendComment = comment
         setComment("")
+        await addComment(selectedTask?.id as string, sendComment, userName)
     }
 
     const handleGetComments = async () => {
         const response = await getComments(selectedTask?.id as string)
-        console.log(response.comments)
-        setComments(response.comments)
+        setComments(selectedTask?.id as string, response.comments)
     }
 
     const member = (id: number): string => {
@@ -122,8 +123,7 @@ export default function Projects() {
         handleGetTasks(projectId)
         handleGetMembers()
     }, [])
-
-
+    
     useEffect(() => {
         socket.emit('join:project', projectId)
 
@@ -136,6 +136,10 @@ export default function Projects() {
             socket.off('update')
         }
     }, [tasks])
+
+    useEffect(() => {
+    handleGetTasks(projectId)
+  }, [projectId])
 
     return (
         <div className="flex min-h-screen bg-[#0f0f0f]">
@@ -176,11 +180,8 @@ export default function Projects() {
             </div>
 
 
+            <div className={`fixed right-0 top-0 h-screen w-105 flex flex-col bg-[#111111] border-l border-[#ffffff10] shadow-[-20px_0_60px_rgba(0,0,0,0.5)] transform transition-transform duration-300 ease-in-out z-50 ${isTaskOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 
-            {/* ── Task Slide-Over Panel ── */}
-            <div className={`fixed right-0 top-0 h-screen w-[420px] flex flex-col bg-[#111111] border-l border-[#ffffff10] shadow-[-20px_0_60px_rgba(0,0,0,0.5)] transform transition-transform duration-300 ease-in-out z-50 ${isTaskOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-
-                {/* ── 1. HEADER ── */}
                 <div className="shrink-0 px-6 pt-5 pb-4 border-b border-[#ffffff08]">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -189,7 +190,7 @@ export default function Projects() {
                                 {selectedTask?.title}
                             </h2>
                         </div>
-                        {/* close button — wire to your own close handler */}
+
                         <button
                             onClick={() => setIsTaskOpen(false)}
                             className="shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-white hover:bg-white/5 transition-colors"
@@ -201,27 +202,25 @@ export default function Projects() {
                     </div>
 
                     {selectedTask?.description && (
-                        <p className="mt-2.5 pl-[18px] text-[#666] text-sm leading-relaxed">
+                        <p className="mt-2.5 pl-4.5 text-[#666] text-sm leading-relaxed">
                             {selectedTask.description}
                         </p>
                     )}
                 </div>
 
-                {/* ── 2. META STRIP ── */}
                 <div className="shrink-0 px-6 py-3 flex items-center gap-4 flex-wrap bg-[#0d0d0d] border-b border-[#ffffff08]">
 
-                    {/* Priority */}
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] text-[#444] uppercase tracking-widest font-medium">Priority</span>
                         <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium border ${selectedTask?.priority === 'HIGH'
-                                ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                : selectedTask?.priority === 'MEDIUM'
-                                    ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                                    : 'bg-green-500/10 text-green-400 border-green-500/20'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                            : selectedTask?.priority === 'MEDIUM'
+                                ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                                : 'bg-green-500/10 text-green-400 border-green-500/20'
                             }`}>
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedTask?.priority === 'HIGH' ? 'bg-red-400'
-                                    : selectedTask?.priority === 'MEDIUM' ? 'bg-orange-400'
-                                        : 'bg-green-400'
+                                : selectedTask?.priority === 'MEDIUM' ? 'bg-orange-400'
+                                    : 'bg-green-400'
                                 }`} />
                             {selectedTask?.priority}
                         </span>
@@ -229,7 +228,6 @@ export default function Projects() {
 
                     <span className="w-px h-4 bg-[#ffffff10]" />
 
-                    {/* Assignee */}
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] text-[#444] uppercase tracking-widest font-medium">Assignee</span>
                         <div className="flex items-center gap-1.5">
@@ -243,7 +241,6 @@ export default function Projects() {
                     </div>
                 </div>
 
-                {/* ── 3. COMMENTS HEADER ── */}
                 <div className="shrink-0 px-6 py-3 flex items-center gap-2 border-b border-[#ffffff08]">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-[#555]">
                         <path d="M14 1H2a1 1 0 00-1 1v9a1 1 0 001 1h4l2 3 2-3h4a1 1 0 001-1V2a1 1 0 00-1-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
@@ -251,11 +248,9 @@ export default function Projects() {
                     <span className="text-[10px] text-[#555] uppercase tracking-widest font-medium">Comments</span>
                 </div>
 
-                {/* ── 4. COMMENTS LIST (scrollable) ── */}
                 <div className="flex-1 overflow-y-auto px-6 py-3 space-y-0.5"
                     style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffffff08 transparent' }}>
 
-                    {/* map your real comments here — this is a static example matching your current UI */}
                     {comments.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-28 gap-2">
                             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-[#2a2a2a]">
@@ -267,18 +262,18 @@ export default function Projects() {
                         comments.map((c, idx) => (
                             <div key={c.id}>
                                 {idx > 0 && <div className="h-px bg-[#ffffff05] my-1" />}
-                                <div className="group flex gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.02] transition-colors">
-                                    {/* Avatar */}
+                                <div className="group flex gap-3 px-3 py-2.5 rounded-xl hover:bg-white/2 transition-colors">
+
                                     <div className="shrink-0 w-7 h-7 rounded-full bg-[#7c3aed]/20 border border-[#7c3aed]/25 flex items-center justify-center text-[10px] text-[#a78bfa] font-semibold">
                                         {c.user.name.charAt(0).toUpperCase()}
                                     </div>
-                                    {/* Body */}
+                                    
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-baseline gap-2 mb-0.5">
                                             <span className="text-[13px] font-medium text-[#e0e0e0]">{c.user.name}</span>
                                             <span className="text-[11px] text-[#3a3a3a]">{c.created_at}</span>
                                         </div>
-                                        <p className="text-sm text-[#888] leading-relaxed break-words">{c.content}</p>
+                                        <p className="text-sm text-[#888] leading-relaxed wrap-break-word">{c.content}</p>
                                     </div>
                                 </div>
                             </div>
@@ -286,7 +281,6 @@ export default function Projects() {
                     )}
                 </div>
 
-                {/* ── 5. INPUT — pinned to bottom ── */}
                 <div className="shrink-0 p-4 bg-[#0d0d0d] border-t border-[#ffffff08]">
                     <div
                         className="flex items-center gap-2 rounded-xl px-3 py-2 focus-within:border-[#7c3aed]/40 transition-colors"
