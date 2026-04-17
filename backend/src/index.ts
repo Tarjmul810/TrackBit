@@ -30,9 +30,11 @@ const projectSchema = zod.object({
 const updateSchema = zod.object({
   title: zod.string().optional(),
   description: zod.string().optional(),
+  order: zod.number().optional(),
   status: zod.enum(["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"]).optional(),
   priority: zod.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
   assigned_to: zod.number().optional(),
+  socketId: zod.string().optional(),
 });
 
 interface User {
@@ -44,9 +46,11 @@ interface User {
 interface Task {
   title: string;
   description?: string;
+  order: number;
   status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
   priority: "LOW" | "MEDIUM" | "HIGH";
   assigned_to: number;
+  socketId: string;
 }
 
 const server = fastify();
@@ -67,7 +71,6 @@ server.ready().then(() => {
   io.on("connection", (socket: any) => {
     console.log("User connected", socket.id);
     socket.on("join:project", (projectId: number) => {
-
       socket.join(`project:${projectId}`);
 
       console.log("Joined project", projectId);
@@ -166,8 +169,9 @@ server.post("/signin", async (request, reply) => {
       success: true,
       message: "User logged in successfully",
       data: {
-        token, user
-      }
+        token,
+        user,
+      },
     });
   } catch (error) {
     return reply.status(500).send({
@@ -222,10 +226,7 @@ server.get(
     try {
       const workspaces = await prisma.workspace.findMany({
         where: {
-          OR: [
-            { userId },
-            { member: { some: { userId } } },
-          ]
+          OR: [{ userId }, { member: { some: { userId } } }],
         },
         include: {
           _count: {
@@ -490,7 +491,7 @@ server.post(
 
     const projectId = request.user.projectId as number;
     const userId = request.user.userId;
-    const { title, description, status, priority, assigned_to } =
+    const { title, description, order, status, priority, assigned_to } =
       request.body as Task;
 
     try {
@@ -500,6 +501,7 @@ server.post(
           userId,
           title,
           description,
+          order,
           status,
           priority,
           assigned_to,
@@ -533,6 +535,9 @@ server.get(
         where: {
           projectId,
         },
+        orderBy: {
+          order: "asc",
+        },
       });
 
       return reply.status(200).send({
@@ -563,13 +568,14 @@ server.put(
         message: "Invalid request body",
       });
 
-    const { title, description, status, priority, assigned_to } =
+    const { title, description, order, status, priority, assigned_to, socketId } =
       request.body as Task;
 
     const data = Object.fromEntries(
       Object.entries({
         title,
         description,
+        order,
         status,
         priority,
         assigned_to,
@@ -585,7 +591,10 @@ server.put(
         data,
       });
 
-      io.to(`project:${projectId}`).emit("update", updatedTask);
+      io.to(`project:${projectId}`).emit("update", {
+        task: updatedTask,
+        movedBy: data.socketId,
+      });
 
       return reply.status(200).send({
         success: true,
@@ -638,9 +647,7 @@ server.post(
   async (request, reply) => {
     const taskId = request.user.taskId as number;
     const userId = request.user.userId;
-    const { content } = request.body as { content: string };
-
-    console.log(taskId, userId, content);
+    const { content, socketId } = request.body as { content: string, socketId: string };
 
     try {
       const comment = await prisma.comment.create({
@@ -649,6 +656,11 @@ server.post(
           content,
           userId,
         },
+      });
+
+      io.to(`task:${taskId}`).emit("comment", {
+        comment,
+        socketId,
       });
 
       return reply.status(200).send({
@@ -680,9 +692,9 @@ server.get(
           user: {
             select: {
               name: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       return reply.status(200).send({

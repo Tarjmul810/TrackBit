@@ -3,13 +3,13 @@
 import Input from "@/src/components/Input";
 import Sidebar from "@/src/components/Sidebar";
 import { TaskColumnCard } from "@/src/components/TaskColumnCard";
-import { addTask, getComments, getMembers, getTasks, getWorkspaces, sendComment, updateTask } from "@/src/lib/axios";
-import { Member, Task, Workspace } from "@/src/lib/lib";
+import { getComments, getMembers, getTasks, getWorkspaces } from "@/src/lib/axios";
+import { Member, Priority, Task, Workspace } from "@/src/lib/lib";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { socket } from "@/src/lib/socket";
-import {useCommentStore, useTaskStore} from "@/src/lib/store";
+import { useCommentStore, useTaskStore } from "@/src/lib/store";
 
 export default function Projects() {
 
@@ -19,24 +19,22 @@ export default function Projects() {
     const projectId = params.id as string
     const router = useRouter()
     const userName = localStorage.getItem("name") as string
-    const { addComment, commentsByCard, setComments } = useCommentStore()
-    const { tasksByStatus, setTasks, moveTask } = useTaskStore()
+    const { addComment, commentsByCard, setComments, setCommentSocketId } = useCommentStore()
+    const { tasksByStatus, setTasks, addTask, moveTask, isMoving, setSocketId } = useTaskStore()
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState("")
-    const [status, setStatus] = useState("TODO")
+    const [status, setStatus] = useState<"TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE">("TODO")
     const [assigned_to, setAssigned_to] = useState(0)
-    const [priority, setPriority] = useState("LOW")
+    const [priority, setPriority] = useState<Priority>("LOW")
     const [isOpen, setIsOpen] = useState(false)
     const [isTaskOpen, setIsTaskOpen] = useState(false)
     const [workspace, setWorkspace] = useState<Workspace[]>([])
-    // const [tasks, setTasks] = useState<Task[]>([])
     const [members, setMembers] = useState<Member[]>([])
+    const [boardKey, setBoardKey] = useState(0)
     const [selectedTask, setSelectedTask] = useState<Task | null>(null)
     const [comment, setComment] = useState<string>("")
     const comments = commentsByCard[selectedTask?.id as string] || []
     const tasks = Object.values(tasksByStatus).flat()
-
-
 
     const getWorkspace = async () => {
         const response = await getWorkspaces()
@@ -63,37 +61,39 @@ export default function Projects() {
     }
 
     const handleGetTasks = async (id: string) => {
+        console.log("id", id)
         const response = await getTasks(id)
         console.log(response)
         setTasks(response.tasks)
     }
 
     const handleAddTask = async () => {
+        setIsOpen(false)
         await addTask(projectId, title, status, priority, assigned_to, description)
         setTitle("")
         setDescription("")
         setPriority("LOW")
         setAssigned_to(0)
-        setIsOpen(false)
-        await handleGetTasks(projectId)
     }
 
     const handleIsOpen = () => {
-    
+
         setIsOpen(!isOpen)
     }
-    
+
     const handleDragEnd = async (result: DropResult) => {
+
         if (!result.destination) return
-        
+
         const taskId = result.draggableId
         const newStatus = result.destination.droppableId
+        const newIndex = result.destination.index
 
-        console.log(taskId, newStatus)
-        
-        moveTask(taskId, newStatus)
+        console.log(taskId, newStatus, newIndex)
+
+        moveTask(taskId, newStatus, newIndex)
     }
-    
+
     const handleCommentOpen = async () => {
         if (!isTaskOpen) {
             handleGetComments()
@@ -122,14 +122,34 @@ export default function Projects() {
         getWorkspace()
         handleGetTasks(projectId)
         handleGetMembers()
+        socket.on("connect", () => {
+            setSocketId(socket.id!)
+            setCommentSocketId(socket.id!)
+        })
     }, [])
-    
+
     useEffect(() => {
         socket.emit('join:project', projectId)
 
-        socket.on('update', () => {
-            console.log('task updated')
-            handleGetTasks(projectId)
+        socket.on('update', ({ task, movedBy }) => {
+            if (movedBy === socket.id) return
+
+            useTaskStore.getState().applyRemoteMove({
+                ...task
+            })
+            setBoardKey(prev => prev + 1)
+        })
+
+        socket.on('comment:added', ({ comment, movedBy }) => {
+            if (movedBy === socket.id) return
+
+            useCommentStore.getState().addRemoteComment(
+                selectedTask?.id as string,
+                {
+                    ...comment,
+                    id: String(comment.id),
+                }
+            )
         })
 
         return () => {
@@ -138,8 +158,15 @@ export default function Projects() {
     }, [tasks])
 
     useEffect(() => {
-    handleGetTasks(projectId)
-  }, [projectId])
+
+        if (!isMoving) {
+            setBoardKey(prev => prev + 1)
+        }
+    }, [isMoving])
+
+    useEffect(() => {
+        handleGetTasks(projectId)
+    }, [projectId])
 
     return (
         <div className="flex min-h-screen bg-[#0f0f0f]">
@@ -159,7 +186,7 @@ export default function Projects() {
                 <div className="flex p-8 gap-8">
                     <div className="flex-1">
                         <div className="grid grid-cols-4 gap-4">
-                            <DragDropContext onDragEnd={handleDragEnd}>
+                            <DragDropContext onDragEnd={handleDragEnd} key={boardKey}>
                                 <div className="flex-1 bg-[#1a1a1a] rounded-xl p-4 flex flex-col gap-3 min-h-[70vh]">
                                     <TaskColumnCard name="Todo" type="TODO" tasks={tasks} members={members} selectTask={setSelectedTask} isOpen={handleCommentOpen} />
                                 </div>
@@ -267,7 +294,7 @@ export default function Projects() {
                                     <div className="shrink-0 w-7 h-7 rounded-full bg-[#7c3aed]/20 border border-[#7c3aed]/25 flex items-center justify-center text-[10px] text-[#a78bfa] font-semibold">
                                         {c.user.name.charAt(0).toUpperCase()}
                                     </div>
-                                    
+
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-baseline gap-2 mb-0.5">
                                             <span className="text-[13px] font-medium text-[#e0e0e0]">{c.user.name}</span>
@@ -319,11 +346,11 @@ export default function Projects() {
                         <Input type="text" placeholder="Title" name={title} setName={setTitle} />
                         <Input type="text" placeholder="Description" name={description} setName={setDescription} />
 
-                        <div className="flex gap-6">
+                        <div className="flex gap-4">
                             <div className="flex flex-col gap-2">
                                 <label className="text-[#888888] text-xs">Priority</label>
                                 <div className="flex gap-2">
-                                    {['LOW', 'MEDIUM', 'HIGH'].map(p => (
+                                    {(['LOW', 'MEDIUM', 'HIGH'] as const).map((p) => (
                                         <button
                                             key={p}
                                             onClick={() => setPriority(p)}
@@ -340,9 +367,9 @@ export default function Projects() {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[#888888] text-xs">Assign to</label>
-                                <select value={assigned_to} onChange={(e) => setAssigned_to(Number(e.target.value))} className="bg-[#0f0f0f] text-white border border-[#ffffff10] rounded-lg px-3 py-1.5 text-sm" >
+                            <div className="flex flex-col gap-2 items-center">
+                                <label className="text-[#888888] text-sm">Assign to</label>
+                                <select value={assigned_to} onChange={(e) => setAssigned_to(Number(e.target.value))} className="bg-[#0f0f0f] text-white border border-[#ffffff10] rounded-lg px-3 py-1.5 text-xs" >
                                     <option value="">Unassigned</option>
                                     {members.map(m => (
                                         <option key={m.id} value={m.id}>{m.user.name}</option>

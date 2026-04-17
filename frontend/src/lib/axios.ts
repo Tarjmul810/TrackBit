@@ -59,17 +59,18 @@ export const getTasks = async (id: string) => {
     return response.data
 }
 
-export const addTask = async (id: string, title: string, status: string, priority: string, assigned_to: number, description?: string) => {
-    const response = await api.post(`/task/${id}`, { title, description, status, priority, assigned_to })
+export const addTask = async (id: string, title: string, status: string, priority: string, order: number, assigned_to: number, description?: string) => {
+    const response = await api.post(`/task/${id}`, { title, description, order, status, priority, assigned_to })
+    console.log(response)
     return response
 }
 
-export const updateTask = async (id: string, status: string, title?: string, description?: string, priority?: string, assigned_to?: number) => {
-    const response = await api.put(`/task/${id}`, { title, description, status, priority, assigned_to })
+export const updateTask = async (id: string, status: string, order: number, socketId: string, title?: string, description?: string, priority?: string, assigned_to?: number) => {
+    const response = await api.put(`/task/${id}`, { title, description, order, status, priority, assigned_to })
     return response
 }
 
-export const sendComment = async (id: string, comment: string) => {
+export const sendComment = async (id: string, comment: string, socketId: string) => {
     const response = await api.post(`/comment/${id}`, { content: comment })
     return response
 }

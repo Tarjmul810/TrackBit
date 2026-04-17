@@ -79,7 +79,7 @@ export const TaskColumnCard = ({ name, type, tasks, members, selectTask, isOpen 
                                         className="p-1"
                                     >
 
-                                        <TaskCard task={task}  index={task.id} assignee={() => member(task.assigned_to)} selectTask={selectTask} IsOpen={isOpen}/>
+                                        <TaskCard task={task}  index={String(task.id)} assignee={() => member(task.assigned_to)} selectTask={selectTask} IsOpen={isOpen}/>
                                     </div>
                                 )}
                             </Draggable>

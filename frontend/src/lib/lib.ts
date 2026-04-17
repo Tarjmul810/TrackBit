@@ -35,6 +35,7 @@ export interface Task {
   id: string | number;
   title: string;
   description?: string;
+  order: number;
   status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
   priority: "LOW" | "MEDIUM" | "HIGH";
   assigned_to: number;
@@ -42,8 +43,9 @@ export interface Task {
 
 export interface SelectedTask {
   id: string;
-  title: string
+  title: string;
   description?: string;
+  order: number;
   status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
   priority: "LOW" | "MEDIUM" | "HIGH";
   assigned_to: (id: string) => string;
@@ -57,20 +59,41 @@ export interface Comment {
   userId: string;
   user: {
     name: string;
-  }
+  };
 }
 
-export interface CommentStore  {
-  commentsByCard: Record<string, Comment[]>
+export interface CommentStore {
+  commentsByCard: Record<string, Comment[]>;
+  socketId: string | null;
+  setCommentSocketId: (id: string) => void;
+  setComments: (cardId: string, comments: Comment[]) => void;
+  addComment: (cardId: string, text: string, userName: string) => Promise<void>;
+  addRemoteComment: (cardId: string, comment: Comment) => void;
+}
+export type Priority = "LOW" | "MEDIUM" | "HIGH";
 
-  setComments: (cardId: string, comments: Comment[]) => void
-  addComment: (cardId: string, text: string, userName: string) => Promise<void>
-} 
-
-export type TasksByStatus =  Record<string, Task[]>
+export type TasksByStatus = Record<string, Task[]>;
 
 export interface TaskStore {
-  tasksByStatus: TasksByStatus
-  setTasks: (tasks: Task[]) => void
-  moveTask: (taskId: string, newStatus: string) => Promise<void>
+  tasksByStatus: TasksByStatus;
+  pendingMoves: Set<string>;
+  isMoving: boolean;
+  socketId: string | null;
+  setSocketId: (id: string) => void;
+  setTasks: (tasks: Task[]) => void;
+  addTask: (
+    projectId: string,
+    title: string,
+    status: string,
+    priority: Priority,
+    assigned_to: number,
+    description?: string,
+  ) => Promise<void>;
+  moveTask: (
+    taskId: string,
+    newStatus: string,
+    newIndex: number,
+  ) => Promise<void>;
+  updateSingleTask: (task: Task) => void;
+  applyRemoteMove: (task: Task) => void;
 }
