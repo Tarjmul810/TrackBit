@@ -1,3 +1,5 @@
+console.log("Step 1: file loaded");
+
 import fastify from "fastify";
 import cors from "@fastify/cors";
 import { prisma } from "../db";
@@ -53,12 +55,16 @@ interface Task {
   socketId: string;
 }
 
+console.log("Step 2: fastify created");
+
 const server = fastify();
 
 await server.register(cors, {
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
+
+console.log("Step 3: plugins registered");
 
 
 const io = new Server(server.server, {
@@ -69,6 +75,8 @@ const io = new Server(server.server, {
   },
 });
 
+console.log("Step 3: plugins registered");
+
 server.ready().then(() => {
   io.on("connection", (socket: any) => {
     socket.on("join:project", (projectId: number) => {
@@ -77,6 +85,8 @@ server.ready().then(() => {
     });
   });
 });
+
+console.log("Step 3: plugins registered");
 
 server.post("/signup", async (request, reply) => {
   try {
