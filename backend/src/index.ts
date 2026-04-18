@@ -54,29 +54,15 @@ interface Task {
 }
 
 const server = fastify();
+
+
 await server.register(cors, {
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
 
-await server.ready() 
+let io: Server;
 
-const io = new Server(server.server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  },
-});
-
-server.ready().then(() => {
-  io.on("connection", (socket: any) => {
-    socket.on("join:project", (projectId: number) => {
-      socket.join(`project:${projectId}`);
-      io.emit("join:project", projectId);
-    });
-  });
-});
 
 server.post("/signup", async (request, reply) => {
   try {
@@ -753,4 +739,21 @@ server.listen({
     process.exit(1);
   }
   console.log(`Server listening at ${address}`);
+});
+
+io = new Server(server.server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  },
+});
+
+server.ready().then(() => {
+  io.on("connection", (socket: any) => {
+    socket.on("join:project", (projectId: number) => {
+      socket.join(`project:${projectId}`);
+      io.emit("join:project", projectId);
+    });
+  });
 });
