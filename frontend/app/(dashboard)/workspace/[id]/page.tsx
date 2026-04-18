@@ -22,28 +22,6 @@ export default function Workspaces() {
     const [project, setProject] = useState<Project[]>([])
     const [members, setMembers] = useState<any>([])
 
-
-    const getWorkspace = async () => {
-        const response = await getWorkspaces()
-        setWorkspace(response.workspaces)
-    }
-
-    const handleGetProjects = async (id: string) => {
-        const response = await getProjects(id)
-        console.log(response)
-        setProject(response.projects)
-    }
-
-    const handleGetMembers = async () => {
-        const response = await getMembers(id)
-        console.log(response)
-        setMembers(response.members)
-    }
-
-    const handleOpenWorkspace = (workspace: Workspace) => {
-        router.push(`/workspace/${workspace.id}`)
-    }
-
     const handleDashboard = () => {
         router.push("/dashboard")
     }
@@ -54,11 +32,34 @@ export default function Workspaces() {
         router.push("/signin")
     }
 
+    const getWorkspace = async () => {
+        const response = await getWorkspaces()
+        setWorkspace(response.workspaces)
+    }
+
+    const handleOpenWorkspace = (workspace: Workspace) => {
+        router.push(`/workspace/${workspace.id}`)
+    }
+
+    const handleGetProjects = async (id: string) => {
+        const response = await getProjects(id)
+        setProject(response.projects)
+    }
+    
     const handleAddProject = async () => {
         await addProject(name, id)
         setName("")
         setIsProjectOpen(false)
         handleGetProjects(id)
+    }
+    
+    const handleProjectOpen = () => {
+        setIsProjectOpen(!isProjectOpen)
+    }
+
+    const handleGetMembers = async () => {
+        const response = await getMembers(id)
+        setMembers(response.members)
     }
 
     const handleAddMember = async () => {
@@ -68,9 +69,6 @@ export default function Workspaces() {
         handleGetMembers()
     }
 
-    const handleProjectOpen = () => {
-        setIsProjectOpen(!isProjectOpen)
-    }
 
     const handleMemberOpen = () => {
         setIsMemberOpen(!isMemberOpen)
@@ -81,8 +79,8 @@ export default function Workspaces() {
     }
 
     useEffect(() => {
-        getWorkspace(),
-            handleGetProjects(id)
+        getWorkspace();
+        handleGetProjects(id);
         handleGetMembers()
     }, [])
 
@@ -113,7 +111,7 @@ export default function Workspaces() {
                         </div>
                     </div>
 
-                    {/* Members panel — fixed width on right */}
+
                     <div className="w-64 border-l border-[#ffffff10] p-6 flex flex-col gap-4">
                         <h2 className="text-white font-medium text-sm mb-2">Members</h2>
                         {members.map((member: any) => (

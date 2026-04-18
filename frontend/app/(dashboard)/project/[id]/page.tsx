@@ -31,10 +31,11 @@ export default function Projects() {
     const [workspace, setWorkspace] = useState<Workspace[]>([])
     const [members, setMembers] = useState<Member[]>([])
     const [boardKey, setBoardKey] = useState(0)
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
     const [comment, setComment] = useState<string>("")
-    const comments = commentsByCard[selectedTask?.id as string] || []
-    const tasks = Object.values(tasksByStatus).flat()
+    const comments = commentsByCard[selectedTaskId as string] || []
+    const allTasks = Object.values(tasksByStatus).flat()
+    const selectedTask = allTasks.find(t => String(t.id) === String(selectedTaskId)) ?? null
 
     const getWorkspace = async () => {
         const response = await getWorkspaces()
@@ -61,9 +62,7 @@ export default function Projects() {
     }
 
     const handleGetTasks = async (id: string) => {
-        console.log("id", id)
         const response = await getTasks(id)
-        console.log(response)
         setTasks(response.tasks)
     }
 
@@ -94,9 +93,10 @@ export default function Projects() {
         moveTask(taskId, newStatus, newIndex)
     }
 
-    const handleCommentOpen = async () => {
+    const handleCommentOpen = async (taskId: string | null) => {
+        if (taskId === null) return
         if (!isTaskOpen) {
-            handleGetComments()
+            handleGetComments(taskId)
         }
         setIsTaskOpen(!isTaskOpen)
     }
@@ -107,9 +107,9 @@ export default function Projects() {
         await addComment(selectedTask?.id as string, sendComment, userName)
     }
 
-    const handleGetComments = async () => {
-        const response = await getComments(selectedTask?.id as string)
-        setComments(selectedTask?.id as string, response.comments)
+    const handleGetComments = async (taskId: string) => {
+        const response = await getComments(taskId)
+        setComments(taskId, response.comments)
     }
 
     const member = (id: number): string => {
@@ -122,10 +122,30 @@ export default function Projects() {
         getWorkspace()
         handleGetTasks(projectId)
         handleGetMembers()
+
+        if (socket.connected) {
+            if (socket.id === undefined) return
+            setSocketId(socket.id)
+            setCommentSocketId(socket.id)
+
+        }
         socket.on("connect", () => {
-            setSocketId(socket.id!)
-            setCommentSocketId(socket.id!)
+            if (socket.id === undefined) return
+            setSocketId(socket.id)
+            setCommentSocketId(socket.id)
         })
+
+        socket.on('reconnect', () => {
+            if (socket.id === undefined) return
+            setSocketId(socket.id)
+            setCommentSocketId(socket.id)
+
+        })
+
+        return () => {
+            socket.off('connect')
+            socket.off('reconnect')
+        }
     }, [])
 
     useEffect(() => {
@@ -140,22 +160,19 @@ export default function Projects() {
             setBoardKey(prev => prev + 1)
         })
 
-        socket.on('comment:added', ({ comment, movedBy }) => {
+        socket.on('comment', ({ comment, movedBy }) => {
+
             if (movedBy === socket.id) return
 
-            useCommentStore.getState().addRemoteComment(
-                selectedTask?.id as string,
-                {
-                    ...comment,
-                    id: String(comment.id),
-                }
-            )
+            const newComment = { ...comment, user: { name: userName } }
+
+            useCommentStore.getState().addRemoteComment(selectedTask?.id as string, newComment)
         })
 
         return () => {
             socket.off('update')
         }
-    }, [tasks])
+    }, [selectedTask])
 
     useEffect(() => {
 
@@ -188,16 +205,16 @@ export default function Projects() {
                         <div className="grid grid-cols-4 gap-4">
                             <DragDropContext onDragEnd={handleDragEnd} key={boardKey}>
                                 <div className="flex-1 bg-[#1a1a1a] rounded-xl p-4 flex flex-col gap-3 min-h-[70vh]">
-                                    <TaskColumnCard name="Todo" type="TODO" tasks={tasks} members={members} selectTask={setSelectedTask} isOpen={handleCommentOpen} />
+                                    <TaskColumnCard name="Todo" type="TODO" tasks={allTasks} members={members} selectTask={setSelectedTaskId} isOpen={() => handleCommentOpen(selectedTaskId)} />
                                 </div>
                                 <div className="flex-1 bg-[#1a1a1a] rounded-xl p-4 flex flex-col gap-3 min-h-[70vh]">
-                                    <TaskColumnCard name="In Progress" type="IN_PROGRESS" tasks={tasks} members={members} selectTask={setSelectedTask} isOpen={handleCommentOpen} />
+                                    <TaskColumnCard name="In Progress" type="IN_PROGRESS" tasks={allTasks} members={members} selectTask={setSelectedTaskId} isOpen={() => handleCommentOpen(selectedTaskId)} />
                                 </div>
                                 <div className="flex-1 bg-[#1a1a1a] rounded-xl p-4 flex flex-col gap-3 min-h-[70vh]">
-                                    <TaskColumnCard name="In Review" type="IN_REVIEW" tasks={tasks} members={members} selectTask={setSelectedTask} isOpen={handleCommentOpen} />
+                                    <TaskColumnCard name="In Review" type="IN_REVIEW" tasks={allTasks} members={members} selectTask={setSelectedTaskId} isOpen={() => handleCommentOpen(selectedTaskId)} />
                                 </div>
                                 <div className="flex-1 bg-[#1a1a1a] rounded-xl p-4 flex flex-col gap-3 min-h-[70vh]">
-                                    <TaskColumnCard name="Done" type="DONE" tasks={tasks} members={members} selectTask={setSelectedTask} isOpen={handleCommentOpen} />
+                                    <TaskColumnCard name="Done" type="DONE" tasks={allTasks} members={members} selectTask={setSelectedTaskId} isOpen={() => handleCommentOpen(selectedTaskId)} />
                                 </div>
                             </DragDropContext>
                         </div>

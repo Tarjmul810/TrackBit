@@ -71,7 +71,7 @@ export const updateTask = async (id: string, status: string, order: number, sock
 }
 
 export const sendComment = async (id: string, comment: string, socketId: string) => {
-    const response = await api.post(`/comment/${id}`, { content: comment })
+    const response = await api.post(`/comment/${id}`, { content: comment, socketId })
     return response
 }
 

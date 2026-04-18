@@ -69,12 +69,8 @@ const io = new Server(server.server, {
 
 server.ready().then(() => {
   io.on("connection", (socket: any) => {
-    console.log("User connected", socket.id);
     socket.on("join:project", (projectId: number) => {
       socket.join(`project:${projectId}`);
-
-      console.log("Joined project", projectId);
-
       io.emit("join:project", projectId);
     });
   });
@@ -579,6 +575,7 @@ server.put(
         status,
         priority,
         assigned_to,
+        socketId,
       }).filter(([key, value]) => value !== undefined),
     );
 
@@ -646,6 +643,7 @@ server.post(
   { preHandler: [authMiddlware, taskAccess] },
   async (request, reply) => {
     const taskId = request.user.taskId as number;
+    const projectId = request.user.projectId as number;
     const userId = request.user.userId;
     const { content, socketId } = request.body as { content: string, socketId: string };
 
@@ -658,9 +656,11 @@ server.post(
         },
       });
 
-      io.to(`task:${taskId}`).emit("comment", {
-        comment,
-        socketId,
+      console.log("socketId", socketId)
+
+      io.to(`project:${projectId}`).emit("comment", {
+        comment: comment,
+        movedBy: socketId,
       });
 
       return reply.status(200).send({

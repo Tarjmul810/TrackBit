@@ -8,13 +8,14 @@ import { useRouter } from "next/navigation"
 export default function Signin() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [loading, setLoading] = useState(false)
 
     const router = useRouter()
 
     const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault()
+        setLoading(true)
         const response = await login(email, password)
-        console.log(response)
         localStorage.setItem("token", response.data.token)
         localStorage.setItem("email", email)
         localStorage.setItem("name", response.data.user.name)
@@ -54,7 +55,8 @@ export default function Signin() {
                     />
                     <button
                         type="submit"
-                        className="w-full bg-[#6d28d9] border border-[#ffffff20] hover:bg-[#6d28d9] text-white font-medium py-3 rounded-lg transition-colors"
+                        disabled={loading}
+                        className="w-full bg-[#6d28d9] border border-[#ffffff20] hover:bg-[#6d28d9] text-white font-medium py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                     >
                         Sign In
                     </button>

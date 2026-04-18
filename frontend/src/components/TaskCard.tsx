@@ -3,11 +3,11 @@ import { Task } from "../lib/lib"
 import { Priority } from "./Prority"
 
 
-export const TaskCard = ({ task, index, assignee, selectTask, IsOpen }: {task: Task, index: string, assignee: () => string, selectTask: Dispatch<SetStateAction<Task | null>>, IsOpen: ()=> void }) => {
+export const TaskCard = ({ task, index, assignee, selectTask, IsOpen }: {task: Task, index: string, assignee: () => string, selectTask: Dispatch<SetStateAction<string | null>>, IsOpen: ()=> void }) => {
 
     return (
         <>
-            <div onClick={()=> {selectTask(task); IsOpen()}} key={index} className="grid grid-cols-3 bg-[#0f0f0f] border border-[#ffffff10] rounded-lg p-3 gap-2 cursor-pointer hover:border-[#626065] transition-colors">
+            <div onClick={()=> { IsOpen(), selectTask(String(task.id))}} key={index} className="grid grid-cols-3 bg-[#0f0f0f] border border-[#ffffff10] rounded-lg p-3 gap-2 cursor-pointer hover:border-[#626065] transition-colors">
                 <div className="col-span-2 flex flex-col gap-2">
                     <div className="flex items-center gap-2 ">
                         <div className="w-2 h-2 bg-[#dccff3] rounded-full"></div>

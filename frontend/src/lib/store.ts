@@ -9,6 +9,7 @@ export const useCommentStore = create<CommentStore>((set, get) => ({
     set({ socketId: id });
   },
 
+
   setComments: (cardId: string, comments: Comment[]) => {
     set((state: any) => ({
       commentsByCard: {
@@ -40,7 +41,8 @@ export const useCommentStore = create<CommentStore>((set, get) => ({
     }));
 
     try {
-      const response = await sendComment(cardId, text, socketId!);
+     
+      const response = await sendComment(cardId, text, socketId as string);
       const savedComment = response.data.comment;
 
       set((state: any) => ({
@@ -323,3 +325,6 @@ applyRemoteMove: (task: Task) => {
   })
 }
 }));
+
+
+// export const use

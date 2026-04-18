@@ -9,14 +9,20 @@ export default function Signin() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [name, setName] = useState("")
+    const [loading, setLoading] = useState(false)
     const router = useRouter()
 
     const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+        try {
         e.preventDefault()
+        setLoading(true)
         const response: Request = await signup(email, password, name)
-        console.log(response)
         localStorage.setItem("token", response.token)
         router.push("/dashboard")
+        } catch (error) {
+            console.log(error)
+            setLoading(false)
+        }
     }
 
     return (
@@ -58,7 +64,8 @@ export default function Signin() {
                     />
                     <button
                         type="submit"
-                        className="w-full bg-[#6d28d9] border border-[#ffffff20] hover:bg-[#6d28d9] text-white font-medium py-3 rounded-lg transition-colors"
+                        disabled={loading}
+                        className="w-full bg-[#6d28d9] border border-[#ffffff20] hover:bg-[#6d28d9] text-white font-medium py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                     >
                         Sign Up
                     </button>

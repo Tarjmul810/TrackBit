@@ -5,7 +5,7 @@ import { TaskCard } from "./TaskCard"
 import { Dispatch, SetStateAction } from "react"
 
 
-export const TaskColumnCard = ({ name, type, tasks, members, selectTask, isOpen }: { name: string, type: string, tasks: Task[], members: Member[], selectTask: Dispatch<SetStateAction<Task | null>>, isOpen: () => void }) => {
+export const TaskColumnCard = ({ name, type, tasks, members, selectTask, isOpen }: { name: string, type: string, tasks: Task[], members: Member[], selectTask: Dispatch<SetStateAction<string | null>>, isOpen: () => void }) => {
 
     const typeGroup = {
         TODO: [] as Task[],
@@ -79,7 +79,7 @@ export const TaskColumnCard = ({ name, type, tasks, members, selectTask, isOpen 
                                         className="p-1"
                                     >
 
-                                        <TaskCard task={task}  index={String(task.id)} assignee={() => member(task.assigned_to)} selectTask={selectTask} IsOpen={isOpen}/>
+                                        <TaskCard task={task} index={String(task.id)} assignee={() => member(task.assigned_to)} selectTask={selectTask} IsOpen={isOpen}/>
                                     </div>
                                 )}
                             </Draggable>
