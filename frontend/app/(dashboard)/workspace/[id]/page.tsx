@@ -2,7 +2,6 @@
 
 import Card from "@/src/components/Card";
 import Input from "@/src/components/Input";
-import { Modal } from "@/src/components/Modal";
 import Sidebar from "@/src/components/Sidebar";
 import { addMember, addProject, getMembers, getProjects, getWorkspaces } from "@/src/lib/axios";
 import { Project, Workspace } from "@/src/lib/lib";
