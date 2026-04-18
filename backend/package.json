@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsx src/index.ts"
+    "build": "pnpm install && pnpm prisma generate",
+    "postinstall": "prisma generate",
+    "start": "tsx src/index.ts"
   },
   "keywords": [],
   "author": "",
