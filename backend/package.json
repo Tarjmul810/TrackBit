@@ -1,12 +1,12 @@
 {
-  "name": "Linear",
+  "name": "linear-backend",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsx src/server.ts"
+    "build": "tsx src/index.ts"
   },
   "keywords": [],
   "author": "",
